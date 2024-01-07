@@ -15,10 +15,9 @@ app.use(express.static("public"))
 
 
 //routes import
-import {userRouter,watchRouter,videoRouter,subscriptionRouter} from './routes/index.js'
+import {userRouter,videoRouter,subscriptionRouter} from './routes/index.js'
 //routes declaration
 app.use("/api/v1/users",userRouter)
-app.use('/api/v1/watch',watchRouter)
 app.use('/api/v1/video',videoRouter)
 app.use('/api/v1/subscription',subscriptionRouter)
 
