@@ -175,10 +175,19 @@ const togglePublishStatus = asyncHandler(async (req, res) => {
       },
     });
     return res
-        .status(200)
-        .json(new ApiResponse(200,{},"publishStatus toggled successfully"))
+      .status(200)
+      .json(new ApiResponse(200, {}, "publishStatus toggled successfully"));
   } catch (error) {
-    throw new ApiError(500,`Error occurred during toggling publishStatus : ${error}`)
+    throw new ApiError(
+      500,
+      `Error occurred during toggling publishStatus : ${error}`
+    );
   }
 });
-export { handleVideoPost, getVideoById, updateVideo, deleteVideo,togglePublishStatus};
+export {
+  handleVideoPost,
+  getVideoById,
+  updateVideo,
+  deleteVideo,
+  togglePublishStatus,
+};

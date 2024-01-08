@@ -1,7 +1,6 @@
 import { validate } from "email-validator";
-const checkEmailFormat = (email)=>{
+const checkEmailFormat = (email) => {
+  return validate(email);
+};
 
-   return validate(email);
-}
-
-export {checkEmailFormat}
+export { checkEmailFormat };

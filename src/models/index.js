@@ -6,5 +6,4 @@ import { Like } from "./like.model.js";
 import { Playlist } from "./playlist.model.js";
 import { Tweet } from "./tweet.model.js";
 
-
-export {User,Video,Subscription,Comment,Playlist,Like,Tweet}
+export { User, Video, Subscription, Comment, Playlist, Like, Tweet };
