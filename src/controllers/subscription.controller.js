@@ -24,23 +24,23 @@ const toggleSubscription = asyncHandler(async (req, res) => {
                 ]
             }
         )
-        if(response.value===null){
+        if(response===null){
             //*No document found matching the specified filter means user is not subscribed channel
             //*so make him subscribed by simply creating a subscription document
 
-            const response = await Subscription.create(
+            const subscription = await Subscription.create(
                 {
                     subscriber:req.user?._id,
                     channelId:channelId
                 }
             )
-            if(!response){
+            if(!subscription){
                 throw new ApiError(500,"Something went while subscribing channel")
             }
-            return res.status(200).json(new ApiResponse(200,{subscribed:true,response},"channel subscribed successfully"))
+            return res.status(200).json(new ApiResponse(200,{subscribed:true,subscription},"channel subscribed successfully"))
         }
         //* else if response.value not null means subscription document deleted successfully and Unsubscribe part also done so simply return success response
-        return res.status(200).json(new ApiResponse(200,{subscribed:false,response},"channel unsubscribed successfully"))
+        return res.status(200).json(new ApiResponse(200,{subscribed:false,subscription:response},"channel unsubscribed successfully"))
 
     } catch (error) {
         throw new ApiError(500,error)

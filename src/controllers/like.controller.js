@@ -14,7 +14,7 @@ const toggleVideoLike = asyncHandler(async (req, res) => {
             likedBy:req.user?._id
         }
     )
-    if(likedVideo.value==null){
+    if(likedVideo==null){
         //* means no like is available to this videoId, so create a new Like
         try {
             const like = await Like.create(
@@ -29,7 +29,7 @@ const toggleVideoLike = asyncHandler(async (req, res) => {
         }
     }
     //* else we already deleted likedVideo so directly send response of dislike
-    return res.status(200).json(new ApiResponse(200,{isLiked:false,videoLike:likedVideo?.value},"video disliked Successfully"))
+    return res.status(200).json(new ApiResponse(200,{isLiked:false,videoLike:likedVideo},"video disliked Successfully"))
 
 })
 
@@ -45,7 +45,7 @@ const toggleCommentLike = asyncHandler(async (req, res) => {
             likedBy:req.user?._id
         }
     )
-    if(likedComment.value==null){
+    if(likedComment==null){
         //* means no like is available to this commentId, so create a new Like
         try {
             const like = await Like.create(
@@ -60,7 +60,7 @@ const toggleCommentLike = asyncHandler(async (req, res) => {
         }
     }
     //* else we already deleted likedComment so directly send response of dislike
-    return res.status(200).json(new ApiResponse(200,{isLiked:false,commentLike:likedComment?.value},"comment disliked Successfully"))
+    return res.status(200).json(new ApiResponse(200,{isLiked:false,commentLike:likedComment},"comment disliked Successfully"))
 })
 
 const toggleTweetLike = asyncHandler(async (req, res) => {
@@ -75,7 +75,7 @@ const toggleTweetLike = asyncHandler(async (req, res) => {
             likedBy:req.user?._id
         }
     )
-    if(likedTweet.value==null){
+    if(likedTweet==null){
         //* means no like is available to this tweetId, so create a new Like
         try {
             const like = await Like.create(
@@ -90,7 +90,7 @@ const toggleTweetLike = asyncHandler(async (req, res) => {
         }
     }
     //* else we already deleted likedTweet so directly send response of dislike
-    return res.status(200).json(new ApiResponse(200,{isLiked:false,tweetLike:likedTweet?.value},"tweet disliked Successfully"))
+    return res.status(200).json(new ApiResponse(200,{isLiked:false,tweetLike:likedTweet},"tweet disliked Successfully"))
 
 }
 )
