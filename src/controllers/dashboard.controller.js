@@ -64,19 +64,23 @@ const getChannelStats = asyncHandler(async (req, res) => {
 
 const getChannelVideos = asyncHandler(async (req, res) => {
   // TODO: Get all the videos uploaded by the channel
-  const channelVideos = await Video.aggregate([
-    {
-      $match: {
-        owner: req.user?._id,
+  try {
+    const channelVideos = await Video.aggregate([
+      {
+        $match: {
+          owner: req.user?._id,
+        },
       },
-    },
-    {
-      $project: {
-        owner: 0,
+      {
+        $project: {
+          owner: 0,
+        },
       },
-    },
-  ]);
-  return res.status(200).json(new ApiResponse(200, channelVideos));
+    ]);
+    return res.status(200).json(new ApiResponse(200, channelVideos,"channelVideos fetched successfully"));
+  } catch (error) {
+    throw new ApiError(500,"Internal server error while fetching channel videos")
+  }
 });
 
 export { getChannelStats, getChannelVideos };

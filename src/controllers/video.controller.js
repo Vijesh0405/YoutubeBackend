@@ -1,6 +1,45 @@
 import { User, Video } from "../models/index.js";
 import { uploadOnCloudinary } from "../utils/cloudinary.js";
 import { ApiError, asyncHandler, ApiResponse } from "../utils/index.js";
+
+const getAllVideos = asyncHandler(async (req, res) => {
+  const { page = 1, limit = 10, query, sortBy, sortType, userId } = req.query;
+  //TODO: get all videos based on query, sort, pagination
+
+  //create filters
+  const filters = {};
+  if (query) {
+    filters.$or = [
+      //*use "$regex" to find query pattern in both title and description
+      { title: { $regex: query, $options: "i" } },
+      { description: { $regex: description, $options: "i" } }, //* "i" for case-insensitive search
+    ];
+  }
+  if (userId) {
+    filters.owner = userId;
+  }
+
+  //make sortOptions
+  const sortOptions = {};
+  if (sortBy) {
+    sortOptions[sortBy] = sortType === "ascending" ? 1 : -1;
+  }
+  const videos = await Video.find(filters)
+    .sort(sortOptions)
+    .skip((page - 1) * 10)
+    .limit(parseInt(limit, 10));
+
+  return res
+    .status(200)
+    .json(
+      new ApiResponse(
+        200,
+        { videos, page: parseInt(page, 10), limit: parseInt(limit, 10) },
+        "videos fetched successfully"
+      )
+    );
+});
+
 const handleVideoPost = asyncHandler(async (req, res) => {
   const { title, description } = req.body;
   if (!(title && description)) {
@@ -18,7 +57,7 @@ const handleVideoPost = asyncHandler(async (req, res) => {
     throw new ApiError(400, "All files are required");
   }
   console.log(`${thumbnailPath} ${videoFilePath}`);
-  //upload to clodinary
+  //upload to cloudinary
   const thumbnailRes = await uploadOnCloudinary(thumbnailPath);
   const videoRes = await uploadOnCloudinary(videoFilePath);
 
@@ -84,45 +123,11 @@ const updateVideo = asyncHandler(async (req, res) => {
   }
   //* if none of them present then simply return our existing video, nothing to do
   if (!(title || description || thumbnailLocalPath)) {
-    // const existingVideo = await Video.aggregate(
-    //     [
-    //         {
-    //             $match: {
-    //                 _id: new mongoose.Types.ObjectId(videoId)
-    //             }
-    //         },
-    //         {
-    //             $lookup: {
-    //                 from: "users",
-    //                 localField: "owner",
-    //                 foreignField: "_id",
-    //                 as: "owner",
-    //                 pipeline:[
-    //                     {
-    //                         $project:{
-    //                             username:1,
-    //                             fullName:1,
-    //                             avatar:1
-    //                         }
-    //                     }
-    //                 ]
-    //             }
-    //         },
-    //         {
-    //             $addFields:{
-    //                 owner:{
-    //                     $first:"$owner"
-    //                 }
-    //             }
-    //         }
-    //     ]
-    // )
-
     return res.status(200).json(new ApiResponse(200, video));
   }
 
   //* else upload thumbnail(if available) to cloudinary and  the update video
-  const thumbnail = null;
+  let thumbnail = null;
   if (thumbnailLocalPath) {
     thumbnail = await uploadOnCloudinary(thumbnailLocalPath);
   }
@@ -130,9 +135,9 @@ const updateVideo = asyncHandler(async (req, res) => {
     videoId,
     {
       $set: {
-        thumbnail: thumbnail?.url,
-        title: title ? title : video.title,
-        description: description ? description : video.description,
+        thumbnail: thumbnail ? thumbnail?.url : null,
+        title: title || video.title,
+        description: description || video.description,
       },
     },
     {
@@ -152,12 +157,18 @@ const deleteVideo = asyncHandler(async (req, res) => {
   }
   //TODO: delete video
   try {
-    const deleteVideo = await Video.findByIdAndDelete(videoId);
+    const deletedVideo = await Video.findByIdAndDelete(videoId);
+    if (!deleteVideo) {
+      throw new ApiError(404, "video doesn't exist,provide correct videoId");
+    }
     return res
       .status(200)
-      .json(new ApiResponse(200, deleteVideo, "video deleted successfully"));
+      .json(new ApiResponse(200, deletedVideo, "video deleted successfully"));
   } catch (error) {
-    throw new ApiError(500, "Error occurred while deleting video");
+    throw new ApiError(
+      error?.statusCode || 500,
+      error?.message || "Error occurred while deleting video"
+    );
   }
 });
 
@@ -185,6 +196,7 @@ const togglePublishStatus = asyncHandler(async (req, res) => {
   }
 });
 export {
+  getAllVideos,
   handleVideoPost,
   getVideoById,
   updateVideo,
