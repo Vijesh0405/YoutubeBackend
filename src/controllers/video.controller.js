@@ -117,9 +117,9 @@ const updateVideo = asyncHandler(async (req, res) => {
   const description = req.body?.description;
   const thumbnailLocalPath = req.file?.path;
 
-  const video = await Video.findById(videoId);
+  const video = await Video.findOne({$and:[{_id:videoId},{owner:req.user?._id}]});
   if (!video) {
-    throw new ApiError(404, "invalid videoId");
+    throw new ApiError(404, "video doesn't exist or you don't have access to do this");
   }
   //* if none of them present then simply return our existing video, nothing to do
   if (!(title || description || thumbnailLocalPath)) {
@@ -157,9 +157,10 @@ const deleteVideo = asyncHandler(async (req, res) => {
   }
   //TODO: delete video
   try {
-    const deletedVideo = await Video.findByIdAndDelete(videoId);
-    if (!deleteVideo) {
-      throw new ApiError(404, "video doesn't exist,provide correct videoId");
+    const deletedVideo = await Video.findOneAndDelete({$and:[{_id:videoId},{owner:req.user?._id}]});
+    console.log(deletedVideo);
+    if (!deletedVideo) {
+      throw new ApiError(404, "video doesn't exist or you don't have access to do this");
     }
     return res
       .status(200)
@@ -178,9 +179,9 @@ const togglePublishStatus = asyncHandler(async (req, res) => {
     throw new ApiError(400, "videoId missing");
   }
   try {
-    const video = await Video.findById(videoId)
+    const video = await Video.findOne({$and:[{_id:videoId},{owner:req.user?._id}]})
     if(!video){
-      throw new ApiError(404,"video doesn't exist,please provide correct videoId")
+      throw new ApiError(404,"video doesn't exist or you don't have access to do this")
     }
     video.isPublished = !video.isPublished
     const updatedVideo = await video.save({validateBeforeSave:false})
@@ -189,8 +190,8 @@ const togglePublishStatus = asyncHandler(async (req, res) => {
       .json(new ApiResponse(200, updatedVideo, "publishStatus toggled successfully"));
   } catch (error) {
     throw new ApiError(
-      500,
-      `Error occurred during toggling publishStatus : ${error}`
+      error.statusCode||500,
+      error.message || `Error occurred during toggling publishStatus : ${error}`
     );
   }
 });

@@ -5,6 +5,7 @@ import { asyncHandler, ApiError, ApiResponse } from "../utils/index.js";
 const getChannelStats = asyncHandler(async (req, res) => {
   // TODO: Get the channel stats like total video views, total subscribers, total videos, total likes etc.
   try {
+    // console.log(req.user)
     const channelStats = await Video.aggregate([
       {
         $match: {
@@ -42,12 +43,22 @@ const getChannelStats = asyncHandler(async (req, res) => {
         },
       },
       {
-        $addField: {
+        $addFields: {
           subscribers: {
             $size: "$subscribers",
           },
         },
       },
+      {
+        $project:{
+          _id:0,
+          channel:"$_id",
+          totalVideos:1,
+          totalLikes:1,
+          totalViews:1,
+          subscribers:1
+        }
+      }
     ]);
     return res
       .status(200)
@@ -57,7 +68,7 @@ const getChannelStats = asyncHandler(async (req, res) => {
   } catch (error) {
     throw new ApiError(
       500,
-      "Internal server error while fetching channel stats,try again later"
+      error||"Internal server error while fetching channel stats,try again later"
     );
   }
 });
@@ -77,9 +88,9 @@ const getChannelVideos = asyncHandler(async (req, res) => {
         },
       },
     ]);
-    return res.status(200).json(new ApiResponse(200, channelVideos,"channelVideos fetched successfully"));
+    return res.status(200).json(new ApiResponse(200, {videos:channelVideos},"channelVideos fetched successfully"));
   } catch (error) {
-    throw new ApiError(500,"Internal server error while fetching channel videos")
+    throw new ApiError(500,error||"Internal server error while fetching channel videos")
   }
 });
 
