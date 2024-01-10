@@ -1,5 +1,5 @@
 import mongoose, { isValidObjectId } from "mongoose";
-import { Like } from "../models/index.js";
+import { Like,Video,Tweet,Comment } from "../models/index.js";
 import { asyncHandler, ApiError, ApiResponse } from "../utils/index.js";
 
 const toggleVideoLike = asyncHandler(async (req, res) => {
@@ -8,11 +8,15 @@ const toggleVideoLike = asyncHandler(async (req, res) => {
   if (!isValidObjectId(videoId)) {
     throw new ApiError(400, "Invalid videoId");
   }
+  const video = await Video.findById(videoId)
+  if(!video){
+    throw new ApiError(404,"video doesn't exist can't like/dislike")
+  }
   const likedVideo = await Like.findOneAndDelete({
     video: videoId,
     likedBy: req.user?._id,
   });
-  if (likedVideo == null) {
+  if (!likedVideo) {
     //* means no like is available to this videoId, so create a new Like
     try {
       const like = await Like.create({
@@ -53,11 +57,15 @@ const toggleCommentLike = asyncHandler(async (req, res) => {
   if (!isValidObjectId(commentId)) {
     throw new ApiError(400, "Invalid commentId");
   }
+  const comment = await Comment.findById(commentId)
+  if(!comment){
+    throw new ApiError(404,"comment doesn't exist can't like/dislike")
+  }
   const likedComment = await Like.findOneAndDelete({
     comment: commentId,
     likedBy: req.user?._id,
   });
-  if (likedComment == null) {
+  if (!likedComment) {
     //* means no like is available to this commentId, so create a new Like
     try {
       const like = await Like.create({
@@ -98,11 +106,15 @@ const toggleTweetLike = asyncHandler(async (req, res) => {
   if (!isValidObjectId(tweetId)) {
     throw new ApiError(400, "Invalid tweetId");
   }
+  const tweet = await Comment.findById(tweetId)
+  if(!tweet){
+    throw new ApiError(404,"tweet doesn't exist can't like/dislike")
+  }
   const likedTweet = await Like.findOneAndDelete({
     tweet: tweetId,
     likedBy: req.user?._id,
   });
-  if (likedTweet == null) {
+  if (!likedTweet) {
     //* means no like is available to this tweetId, so create a new Like
     try {
       const like = await Like.create({
@@ -144,7 +156,7 @@ const getLikedVideos = asyncHandler(async (req, res) => {
       {
         $match: {
           likedBy: req.user?._id,
-          video: { $exist: true, $ne: null },
+          video: { $exists: true, $ne: null },
         },
       },
       {
@@ -181,16 +193,13 @@ const getLikedVideos = asyncHandler(async (req, res) => {
     return res
       .status(200)
       .json(
-        new ApiResponse(
-          200,
-          { likedVideos },
-          "liked videos fetched successfully"
-        )
+        new ApiResponse(200, likedVideos, "liked videos fetched successfully")
       );
   } catch (error) {
     throw new ApiError(
       500,
-      "can't fetch liked videos ,Internal server error ,try again later"
+      error ||
+        "can't fetch liked videos ,Internal server error ,try again later"
     );
   }
 });

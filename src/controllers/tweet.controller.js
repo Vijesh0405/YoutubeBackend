@@ -19,6 +19,7 @@ const createTweet = asyncHandler(async (req, res) => {
         "tweet not created,Internal server error,try again later"
       );
     }
+    return res.status(200).json(new ApiResponse(200,tweet,"tweet created successfully"))
   } catch (error) {
     throw new ApiError(
       500,
@@ -30,14 +31,14 @@ const createTweet = asyncHandler(async (req, res) => {
 const getUserTweets = asyncHandler(async (req, res) => {
   // TODO: get user tweets
   const { userId } = req.params;
-  if (isValidObjectId(userId)) {
-    throw new ApiError("invalid userId");
+  if (!isValidObjectId(userId)) {
+    throw new ApiError(400,"invalid userId");
   }
   try {
     const tweets = await Tweet.find({ owner: userId });
     return res
       .status(200)
-      .json(new ApiResponse(200, tweets, "tweets fetched successfully"));
+      .json(new ApiResponse(200, {tweets}, "tweets fetched successfully"));
   } catch (error) {
     throw new ApiError(
       500,
@@ -82,14 +83,14 @@ const updateTweet = asyncHandler(async (req, res) => {
 const deleteTweet = asyncHandler(async (req, res) => {
   //TODO: delete tweet
   const { tweetId } = req.params;
-  if (isValidObjectId(tweetId)) {
+  if (!isValidObjectId(tweetId)) {
     throw new ApiError(400, "invalid tweetId");
   }
   try {
-    await Tweet.findByIdAndDelete(tweetId);
+    const tweet = await Tweet.findByIdAndDelete(tweetId);
     return res
       .status(200)
-      .json(new ApiResponse(200, "tweet deleted successfully"));
+      .json(new ApiResponse(200, tweet,"tweet deleted successfully"));
   } catch (error) {
     throw new ApiError(
       500,

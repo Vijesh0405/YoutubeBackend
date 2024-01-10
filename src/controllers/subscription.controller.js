@@ -23,7 +23,7 @@ const toggleSubscription = asyncHandler(async (req, res) => {
 
       const subscription = await Subscription.create({
         subscriber: req.user?._id,
-        channelId: channelId,
+        channel: channelId,
       });
       if (!subscription) {
         throw new ApiError(500, "Something went while subscribing channel");
@@ -84,7 +84,7 @@ const getUserChannelSubscribers = asyncHandler(async (req, res) => {
       },
     },
     {
-      $addField: {
+      $addFields: {
         subscriber: {
           $arrayElemAt: ["$subscriber", 0],
         },
@@ -110,7 +110,7 @@ const getUserChannelSubscribers = asyncHandler(async (req, res) => {
     .json(
       new ApiResponse(
         200,
-        { subscribers },
+        subscribers,
         "channel subscribers fetched successfully"
       )
     );
@@ -148,7 +148,7 @@ const getSubscribedChannels = asyncHandler(async (req, res) => {
       },
     },
     {
-      $addField: {
+      $addFields: {
         channel: {
           $first: "$channel",
         },
@@ -174,7 +174,7 @@ const getSubscribedChannels = asyncHandler(async (req, res) => {
     .json(
       new ApiResponse(
         200,
-        { channels },
+        channels ,
         "subscribed channels fetched successfully"
       )
     );

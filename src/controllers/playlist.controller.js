@@ -1,5 +1,5 @@
 import mongoose, { isValidObjectId } from "mongoose";
-import { Playlist } from "../models/index.js";
+import { Playlist, Video } from "../models/index.js";
 import { asyncHandler, ApiError, ApiResponse } from "../utils/index.js";
 
 const createPlaylist = asyncHandler(async (req, res) => {
@@ -32,6 +32,9 @@ const getUserPlaylists = asyncHandler(async (req, res) => {
   if (!userId) {
     throw new ApiError(400, "userId is missing");
   }
+  if (!isValidObjectId(userId)) {
+    throw new ApiError(400, "userId isn't valid");
+  }
   try {
     const userPlaylists = await Playlist.aggregate([
       {
@@ -41,7 +44,7 @@ const getUserPlaylists = asyncHandler(async (req, res) => {
       },
       {
         $group: {
-          _id: owner,
+          _id: "$owner",
           playlists: {
             $push: {
               _id: "$_id",
@@ -72,7 +75,8 @@ const getUserPlaylists = asyncHandler(async (req, res) => {
   } catch (error) {
     throw new ApiError(
       500,
-      "Internal server error while getting user playlists,try again later"
+      error ||
+        "Internal server error while getting user playlists,try again later"
     );
   }
 });
@@ -83,6 +87,9 @@ const getPlaylistById = asyncHandler(async (req, res) => {
   if (!playlistId) {
     throw new ApiError(400, "playlistId is missing");
   }
+  if (!isValidObjectId(playlistId)) {
+    throw new ApiError(400, "playlistId isn't valid");
+  }
   try {
     const playlist = await Playlist.findById(playlistId);
     if (!playlist) {
@@ -91,7 +98,9 @@ const getPlaylistById = asyncHandler(async (req, res) => {
         "playlist not exist with this playlistId,try again with correct one"
       );
     }
-    return res.status(200, playlist, "playlist fetched successfully");
+    return res
+      .status(200)
+      .json(new ApiResponse(200, playlist, "playlist fetched successfully"));
   } catch (error) {
     throw new ApiError(
       500,
@@ -106,9 +115,27 @@ const addVideoToPlaylist = asyncHandler(async (req, res) => {
   if (!(playlistId && videoId)) {
     throw new ApiError(400, "playlistId and videoId is missing");
   }
+  if (!isValidObjectId(playlistId)) {
+    throw new ApiError(400, "playlistId isn't valid");
+  }
+  if (!isValidObjectId(videoId)) {
+    throw new ApiError(400, "videoId isn't valid");
+  }
   try {
-    const updatedPlaylist = await Playlist.findByIdAndUpdate(
-      playlistId,
+    const video = await Video.find({
+      $and: [{ _id: videoId }, { owner: req.user?._id }],
+    });
+    if (video.length === 0) {
+      throw new ApiError(
+        404,
+        "Invalid videoId or video didn't uploaded by you"
+      );
+    }
+    // console.log(video)
+    const updatedPlaylist = await Playlist.findOneAndUpdate(
+      {
+        $and:[{ _id: playlistId },{ owner: req.user?._id }],
+      },
       {
         $push: { videos: videoId },
       },
@@ -119,7 +146,7 @@ const addVideoToPlaylist = asyncHandler(async (req, res) => {
     if (!updatedPlaylist) {
       throw new ApiError(
         400,
-        "playlist doesn't exist with this playlistId,try again with correct one"
+        "playlist doesn't exist or you don't have access to this"
       );
     }
     return res
@@ -146,9 +173,17 @@ const removeVideoFromPlaylist = asyncHandler(async (req, res) => {
   if (!(playlistId && videoId)) {
     throw new ApiError(400, "playlistId and videoId is missing");
   }
+  if (!isValidObjectId(playlistId)) {
+    throw new ApiError(400, "playlistId isn't valid");
+  }
+  if (!isValidObjectId(videoId)) {
+    throw new ApiError(400, "videoId isn't valid");
+  }
   try {
-    const updatedPlaylist = await Playlist.findByIdAndUpdate(
-      playlistId,
+    const updatedPlaylist = await Playlist.findOneAndUpdate(
+      {
+        $and:[{ _id: playlistId },{ owner: req.user?._id }],
+      },
       {
         $pull: {
           videos: { $in: [videoId] },
@@ -161,7 +196,7 @@ const removeVideoFromPlaylist = asyncHandler(async (req, res) => {
     if (!updatedPlaylist) {
       throw new ApiError(
         404,
-        "playlist not exist with this playlistId,try again with correct one"
+        "playlist not exist or you not have access to this"
       );
     }
 
@@ -171,7 +206,7 @@ const removeVideoFromPlaylist = asyncHandler(async (req, res) => {
         new ApiResponse(
           200,
           updatedPlaylist,
-          "video added to playlist successfully"
+          "video removed from playlist successfully"
         )
       );
   } catch (error) {
@@ -189,12 +224,15 @@ const deletePlaylist = asyncHandler(async (req, res) => {
   if (!playlistId) {
     throw new ApiError(400, "playlistId is missing");
   }
+  if (!isValidObjectId(playlistId)) {
+    throw new ApiError(400, "playlistId isn't valid");
+  }
   try {
-    const deletedPlaylist = await Playlist.findByIdAndDelete(playlistId);
+    const deletedPlaylist = await Playlist.findOneAndDelete({$and:[{_id:playlistId},{owner:req.user?._id}]});
     if (!deletedPlaylist) {
       throw new ApiError(
         404,
-        "playlist not found,please provide valid playlistId"
+        "playlist doesn't exist or you don't have access to this"
       );
     }
     return res
@@ -218,14 +256,21 @@ const updatePlaylist = asyncHandler(async (req, res) => {
   if (!playlistId) {
     throw new ApiError(400, "playlistId is missing");
   }
+  if (!isValidObjectId(playlistId)) {
+    throw new ApiError(400, "playlistId isn't valid");
+  }
   try {
-    const updatedPlaylist = await Playlist.findByIdAndUpdate(
-      playlistId,
+    const updateFields = {};
+    if (name) {
+      updateFields.name = name;
+    }
+    if (description) {
+      updateFields.description = description;
+    }
+    const updatedPlaylist = await Playlist.findOneAndUpdate(
+      {$and:[{_id:playlistId},{owner:req.user?._id}]},
       {
-        $set: {
-          name: name || "$name",
-          description: description || "$description",
-        },
+        $set: updateFields,
       },
       {
         new: true,
@@ -234,7 +279,7 @@ const updatePlaylist = asyncHandler(async (req, res) => {
     if (!updatedPlaylist) {
       throw new ApiError(
         404,
-        "playlist doesn't exist, provide correct playlistId"
+        "playlist doesn't exist or you don't have access to this"
       );
     }
     return res

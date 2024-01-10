@@ -12,7 +12,7 @@ const getAllVideos = asyncHandler(async (req, res) => {
     filters.$or = [
       //*use "$regex" to find query pattern in both title and description
       { title: { $regex: query, $options: "i" } },
-      { description: { $regex: description, $options: "i" } }, //* "i" for case-insensitive search
+      { description: { $regex: query, $options: "i" } }, //* "i" for case-insensitive search
     ];
   }
   if (userId) {
@@ -26,7 +26,7 @@ const getAllVideos = asyncHandler(async (req, res) => {
   }
   const videos = await Video.find(filters)
     .sort(sortOptions)
-    .skip((page - 1) * 10)
+    .skip((page - 1) * limit)
     .limit(parseInt(limit, 10));
 
   return res
@@ -135,7 +135,7 @@ const updateVideo = asyncHandler(async (req, res) => {
     videoId,
     {
       $set: {
-        thumbnail: thumbnail ? thumbnail?.url : null,
+        thumbnail: thumbnail ? thumbnail?.url : video.thumbnail,
         title: title || video.title,
         description: description || video.description,
       },
@@ -178,16 +178,15 @@ const togglePublishStatus = asyncHandler(async (req, res) => {
     throw new ApiError(400, "videoId missing");
   }
   try {
-    await Video.findByIdAndUpdate(videoId, {
-      $set: {
-        isPublished: {
-          $not: "$isPublished",
-        },
-      },
-    });
+    const video = await Video.findById(videoId)
+    if(!video){
+      throw new ApiError(404,"video doesn't exist,please provide correct videoId")
+    }
+    video.isPublished = !video.isPublished
+    const updatedVideo = await video.save({validateBeforeSave:false})
     return res
       .status(200)
-      .json(new ApiResponse(200, {}, "publishStatus toggled successfully"));
+      .json(new ApiResponse(200, updatedVideo, "publishStatus toggled successfully"));
   } catch (error) {
     throw new ApiError(
       500,
