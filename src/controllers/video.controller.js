@@ -18,6 +18,8 @@ const getAllVideos = asyncHandler(async (req, res) => {
   if (userId) {
     filters.owner = userId;
   }
+  //*checking for published video
+  filters.isPublished = true
 
   //make sortOptions
   const sortOptions = {};
