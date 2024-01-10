@@ -1,22 +1,100 @@
-import mongoose from "mongoose";
-import { Comment } from "../models/index.js";
+import mongoose, { isValidObjectId } from "mongoose";
+import { Comment, Video } from "../models/index.js";
 import { asyncHandler, ApiError, ApiResponse } from "../utils/index.js";
 
 const getVideoComments = asyncHandler(async (req, res) => {
   //TODO: get all comments for a video
   const { videoId } = req.params;
   const { page = 1, limit = 10 } = req.query;
+  if (!isValidObjectId(videoId)) {
+    throw new ApiError(400, "videoId is not valid or missing");
+  }
+
+  // const video = await Video.findById(videoId)
+  // if(!video){
+  //   throw new ApiError(404,"Invalid videoId,can't fetch comments")
+  // }
+
+  try {
+    const comments = await Comment.aggregate([
+      {
+        $match: {
+          video: new mongoose.Types.ObjectId(videoId),
+        },
+      },
+      {
+        $lookup:{
+          from:"users",
+          localField:"owner",
+          foreignField:"_id",
+          as:"owner",
+          pipeline:[
+            {
+              $project:{
+                username:1,
+                avatar:1,
+              }
+            }
+          ]
+        }
+      },
+      {
+        $lookup:{
+          from:"likes",
+          localField:"_id",
+          foreignField:"comment",
+          as:"likes"
+        }
+      },
+      {
+        $addFields:{
+          owner:{
+            $first:"$owner"
+          },
+          likes:{
+            $size:"$likes"
+          }
+        }
+      },
+      {
+        $project:{
+          video:0
+        }
+      },
+      {
+        $skip:(page-1)*limit
+      },{
+        $limit:parseInt(limit)
+      }
+    ]);
+
+    return res
+      .status(200)
+      .json(
+        new ApiResponse(
+          200,
+          { page: parseInt(page), limit: parseInt(limit), comments },
+          "comments fetched Successfully"
+        )
+      );
+  } catch (error) {
+    throw new ApiError(500, `Internal server error :${error}`);
+  }
 });
 
 const addComment = asyncHandler(async (req, res) => {
   // TODO: add a comment to a video
   const { videoId } = req.params;
   const { content } = req.body;
-  if (!videoId) {
-    throw new ApiError(400, "videoId is missing");
+  if (!isValidObjectId(videoId)) {
+    throw new ApiError(400, "Invalid videoId or missing");
   }
   if (!content) {
     throw new ApiError(400, "content is required");
+  }
+  const video = await Video.findById(videoId);
+  if (!video) {
+    throw new ApiError(404, "video doesn't exist,provide valid videoId");
   }
   try {
     const comment = await Comment.create({
@@ -43,12 +121,14 @@ const updateComment = asyncHandler(async (req, res) => {
     throw new ApiError(400, "commentId missing");
   }
   try {
-    const updatedComment = await Comment.findByIdAndUpdate(
-      commentId,
+    const updateFields = {}
+    if(content){
+      updateFields.content=content
+    }
+    const updatedComment = await Comment.findOneAndUpdate(
+      { $and: [{ _id: commentId }, { owner: req.user?._id }] },
       {
-        $set: {
-          content: content || "$content",
-        },
+        $set: updateFields,
       },
       {
         new: true,
@@ -57,7 +137,7 @@ const updateComment = asyncHandler(async (req, res) => {
     if (!updatedComment) {
       throw new ApiError(
         404,
-        "comment doesn't exist,provide correct commentId"
+        "comment doesn't exist or you don't have access to do this"
       );
     }
     return res
@@ -77,16 +157,18 @@ const updateComment = asyncHandler(async (req, res) => {
 const deleteComment = asyncHandler(async (req, res) => {
   // TODO: delete a comment
   const { commentId } = req.params;
-  if (!commentId) {
-    throw new ApiError(400, "commentId missing");
+  if (!isValidObjectId(commentId)) {
+    throw new ApiError(400, "Invalid commentId or commentId missing");
   }
   try {
-    const deletedComment = await Comment.findByIdAndDelete(commentId);
+    const deletedComment = await Comment.findOneAndDelete({
+      $and: [{ _id: commentId }, { owner: req.user?._id }],
+    });
     //* deletedComment is null if no comment found
     if (!deletedComment) {
       throw new ApiError(
         404,
-        "comment doesn't exist,provide correct commentId"
+        "comment doesn't exist or you don't have access to do this"
       );
     }
     return res
