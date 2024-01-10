@@ -1,5 +1,5 @@
 import { User, Video } from "../models/index.js";
-import { uploadOnCloudinary } from "../utils/cloudinary.js";
+import { deleteFromCloudinary, uploadOnCloudinary } from "../utils/cloudinary.js";
 import { ApiError, asyncHandler, ApiResponse } from "../utils/index.js";
 
 const getAllVideos = asyncHandler(async (req, res) => {
@@ -125,22 +125,28 @@ const updateVideo = asyncHandler(async (req, res) => {
   }
   //* if none of them present then simply return our existing video, nothing to do
   if (!(title || description || thumbnailLocalPath)) {
-    return res.status(200).json(new ApiResponse(200, video));
+    return res.status(200).json(new ApiResponse(200, video,"no changes done"));
   }
 
-  //* else upload thumbnail(if available) to cloudinary and  the update video
-  let thumbnail = null;
+  //* else upload thumbnail(if available) to cloudinary and  update other fields also
+  const updateOptions={}
   if (thumbnailLocalPath) {
-    thumbnail = await uploadOnCloudinary(thumbnailLocalPath);
+    //first delete previous one 
+    const deletedThumbnail = await deleteFromCloudinary(video.thumbnail)
+    if(!deletedThumbnail){
+      throw new ApiError(500,"Internal server error while deleting thumbnail from cloudinary")
+    }
+    const thumbnail = await uploadOnCloudinary(thumbnailLocalPath);
+    if(thumbnail){
+      updateOptions.thumbnail=thumbnail.url
+    }
   }
+  if(title) {updateOptions.title=title}
+  if(description){updateOptions.description=description}
   const updatedVideo = await Video.findByIdAndUpdate(
     videoId,
     {
-      $set: {
-        thumbnail: thumbnail ? thumbnail?.url : video.thumbnail,
-        title: title || video.title,
-        description: description || video.description,
-      },
+      $set: updateOptions,
     },
     {
       new: true,
