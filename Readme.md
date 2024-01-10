@@ -64,10 +64,19 @@ Welcome to the YouTube Backend project! This project is a full-featured backend 
 
    ```bash
    git clone https://github.com/Vijesh0405/YoutubeBackend.git
+   cd YoutubeBackend
 
+2. **Install Dependencies:**
+   ```bash
+   npm install
+3. **Configure Environment Variables:** 
+   <p style="font-size:13px">
+   Create a <strong>'.env'</strong> file based on the provided <strong>'.env.example'</strong> and fill in the necessary credentials for your MongoDB, Cloudinary, and other services.
+   </p>
 
-
-
+4. **Run Application**
+   ```bash
+   npm start
 <h3 align="center">
   Thank you for checking out this project! I appreciate your support 🙏.
 </h3>
